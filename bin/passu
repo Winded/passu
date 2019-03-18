@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+const passu = require('../src/index');
+
+passu.test();

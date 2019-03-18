@@ -1,0 +1,26 @@
+{
+  "name": "passu",
+  "version": "1.0.0",
+  "description": "Password manager with CLI interface",
+  "main": "src/index.js",
+  "bin": {
+    "passu": "./bin/passu"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Winded/passu.git"
+  },
+  "author": "Antton Hytönen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Winded/passu/issues"
+  },
+  "homepage": "https://github.com/Winded/passu#readme",
+  "dependencies": {
+    "nodemon": "^1.18.10",
+    "vorpal": "^1.12.0"
+  }
+}
