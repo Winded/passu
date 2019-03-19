@@ -81,8 +81,12 @@ class PasswordDatabase {
         if (!/^[a-zA-Z0-9\-]+$/.test(name)) {
             throw new EvalError('Name must only contain alphabetic characters, numbers and dashes');
         }
+        let entry = this.getEntry(name);
+        if(entry) {
+            throw new Error(`Entry ${name} already exists.`);
+        }
     
-        let entry = {
+        entry = {
             name: name,
             password: password,
             description: description || '',
@@ -117,7 +121,7 @@ class PasswordDatabase {
             throw new Error(`Entry ${name} not found.`);
         }
 
-        this.data.entries.slice(this.data.entries.indexOf(entry), 1);
+        this.data.entries = this.data.entries.filter((e) => e !== entry);
         this.modified = true;
         return entry;
     }
