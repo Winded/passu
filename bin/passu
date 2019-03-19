@@ -21,42 +21,36 @@ const loadOrCreateDb = async (pwFile) => {
         console.log('Opening password file.');
 
         let bytes = fs.readFileSync(pwFile);
+        let pwInput = await passwordPrompt('Master password: ');
 
-        while(true) {
-            let pwInput = await passwordPrompt('Master password: ');
-            let password = passu.hashPassword(pwInput);
-
-            try {
-                return passu.loadDatabase(bytes, password);
-            } catch(SyntaxError) {
-                console.log('Failed to open password file. Either the file is corrupted or you provided an invalid password.');
-            }
+        try {
+            return passu.PasswordDatabase.fromData(bytes, pwInput);
+        } catch(SyntaxError) {
+            console.log('Failed to open password file. Either the file is corrupted or you provided an invalid password.');
+            return null;
         }
     } else {
         console.log('File does not exist. Creating new password database.');
 
-        let pwInput = null;
-        while(true) {
-            pwInput = await passwordPrompt('Master password: ');
-            let pwInputConfirm = await passwordPrompt('Confirm password: ');
-            if(pwInput != pwInputConfirm) {
-                console.log('ERROR: Passwords do not match.');
-            } else {
-                break;
-            }
+        let pwInput = await passwordPrompt('Master password: ');
+        let pwInputConfirm = await passwordPrompt('Confirm password: ');
+        if(pwInput != pwInputConfirm) {
+            console.log('ERROR: Passwords do not match.');
+            return null;
         }
 
-        let password = passu.hashPassword(pwInput);
-        return passu.createNewDatabase(password);
+        return new passu.PasswordDatabase(pwInput);
     }
 }
 
 const main = async (pwFile) => {
     let db = await loadOrCreateDb(pwFile);
-    let modified = false;
+    if(!db) {
+        return;
+    }
 
-    const dbTitleAutocomplete = (input) => {
-        return passu.findEntries(db, input).map((entry) => entry.title);
+    const dbNameAutocomplete = (input) => {
+        return db.findEntries(input).map((entry) => entry.name);
     };
 
     let prompt = vorpal();
@@ -66,7 +60,7 @@ const main = async (pwFile) => {
 
     prompt.command('passwords list', 'List password entries')
         .action((_args, cb) => {
-            let entries = db.data.entries.map((entry) => entry.title);
+            let entries = db.findEntries().map((entry) => entry.name);
             if(entries.length == 0) {
                 prompt.log('No entries found');
                 cb();
@@ -77,24 +71,28 @@ const main = async (pwFile) => {
             cb();
         });
 
-    prompt.command('passwords new <title> [username] [description]', 'Create new password entry')
+    prompt.command('passwords new <name> [description]', 'Create new password entry')
         .action(async (args, cb) => {
             let password = await passwordPrompt('Password (leave empty to generate): ');
             if(!password) {
-                password = passu.generatePassword(db);
+                password = db.generatePassword();
             }
 
-            passu.addEntry(db, args.title, password, args.username, args.description);
-            prompt.log('Password added');
-            modified = true;
+            try {
+                db.addEntry(args.name, password, args.description);
+                prompt.log('Password added');
+            } catch (err) {
+                prompt.log(`Failed to add password entry: ${err}`);
+            }
+            
             cb();
         });
 
-    prompt.command('passwords show <title>', 'Show password entry')
-        .autocomplete({ data: dbTitleAutocomplete })
+    prompt.command('passwords show <name>', 'Show password entry')
+        .autocomplete({ data: dbNameAutocomplete })
         .option('-p, --pass-only', 'Only show password')
         .action((args, cb) => {
-            let entry = passu.getEntry(db, args.title);
+            let entry = db.getEntry(args.name);
             if(!entry) {
                 prompt.log('Entry not found');
                 cb();
@@ -107,27 +105,55 @@ const main = async (pwFile) => {
                 return;
             }
             
-            prompt.log(`Title: ${entry.title}`);
-            prompt.log(`Username: ${entry.username || '(none)'}`);
+            prompt.log(`Name: ${entry.name}`);
             prompt.log(`Password: (${entry.password.length} characters)`);
             prompt.log(`Description: \n ${entry.description || '(none)'}`);
 
             cb();
         });
 
+    prompt.command('passwords edit <name>', 'Edit a password entry')
+        .autocomplete({ data: dbNameAutocomplete })
+        .option('-n, --new-name <newname>', 'Change name of entry')
+        .option('-d, --description <newdescription>', 'Change description of entry')
+        .option('-p, --change-password', 'Change password')
+        .action(async (args, cb) => {
+            let entry = db.getEntry(args.name);
+            if(!entry) {
+                prompt.log('Entry not found');
+                cb();
+                return;
+            }
+
+            let newName = args.options['new-name'] || null;
+            let newDescription = args.options.description || null;
+            let newPassword = null;
+
+            if(args.options['change-password']) {
+                let password = await passwordPrompt('Password (leave empty to generate): ');
+                if(!password) {
+                    password = db.generatePassword(entry.overridePolicy);
+                }
+                newPassword = password;
+            }
+
+            db.updateEntry(args.name, newName, newPassword, newDescription);
+            prompt.log('Entry updated');
+            cb();
+        });
+
     prompt.command('save', 'Save the password database to file')
         .action((_args, cb) => {
-            let bytes = passu.saveDatabase(db);
+            let bytes = db.save();
             fs.writeFileSync(pwFile, bytes);
             prompt.log(`Password database saved to ${pwFile}`);
-            modified = false;
             cb();
         });
 
     prompt.command('exit').alias('quit')
         .option('-f, --forced', 'Exit without saving')
         .action((args, cb) => {
-            if(!args.options.forced && modified) {
+            if(!args.options.forced && db.modified) {
                 prompt.log('Unsaved changes detected. Please save your password database using \'save\', or exit without saving using the \'-f\' option');
                 cb();
             }

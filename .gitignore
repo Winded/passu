@@ -84,4 +84,4 @@ typings/
 .dynamodb/
 
 # Test passu file
-test.passu
+test.passu*
