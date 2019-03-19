@@ -2,4 +2,9 @@
 
 const passu = require('../src/index');
 
-passu.test();
+let password = passu.hashPassword('myPassword');
+
+let db = passu.createNewDatabase(password);
+let bytes = passu.saveDatabase(db);
+
+console.log(bytes);
