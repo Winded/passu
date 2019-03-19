@@ -1,10 +1,151 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const path = require('path');
+const read = require('read');
+const vorpal = require('vorpal');
 const passu = require('../src/index');
 
-let password = passu.hashPassword('myPassword');
+const passwordPrompt = (prompt) => new Promise((resolve, reject) => {
+    read({ prompt: prompt, silent: true }, function(er, password) {
+        if(er) {
+            reject(er);
+        } else {
+            resolve(password);
+        }
+    });
+});
 
-let db = passu.createNewDatabase(password);
-let bytes = passu.saveDatabase(db);
+const loadOrCreateDb = async (pwFile) => {
+    if(fs.existsSync(pwFile)) {
+        console.log('Opening password file.');
 
-console.log(bytes);
+        let bytes = fs.readFileSync(pwFile);
+
+        while(true) {
+            let pwInput = await passwordPrompt('Master password: ');
+            let password = passu.hashPassword(pwInput);
+
+            try {
+                return passu.loadDatabase(bytes, password);
+            } catch(SyntaxError) {
+                console.log('Failed to open password file. Either the file is corrupted or you provided an invalid password.');
+            }
+        }
+    } else {
+        console.log('File does not exist. Creating new password database.');
+
+        let pwInput = null;
+        while(true) {
+            pwInput = await passwordPrompt('Master password: ');
+            let pwInputConfirm = await passwordPrompt('Confirm password: ');
+            if(pwInput != pwInputConfirm) {
+                console.log('ERROR: Passwords do not match.');
+            } else {
+                break;
+            }
+        }
+
+        let password = passu.hashPassword(pwInput);
+        return passu.createNewDatabase(password);
+    }
+}
+
+const main = async (pwFile) => {
+    let db = await loadOrCreateDb(pwFile);
+    let modified = false;
+
+    const dbTitleAutocomplete = (input) => {
+        return passu.findEntries(db, input).map((entry) => entry.title);
+    };
+
+    let prompt = vorpal();
+
+    // Remove default 'exit' command to override it.
+    prompt.commands[1].remove();
+
+    prompt.command('passwords list', 'List password entries')
+        .action((_args, cb) => {
+            let entries = db.data.entries.map((entry) => entry.title);
+            if(entries.length == 0) {
+                prompt.log('No entries found');
+                cb();
+                return;
+            }
+
+            entries.forEach((entry) => prompt.log(entry));
+            cb();
+        });
+
+    prompt.command('passwords new <title> [username] [description]', 'Create new password entry')
+        .action(async (args, cb) => {
+            let password = await passwordPrompt('Password (leave empty to generate): ');
+            if(!password) {
+                password = passu.generatePassword(db);
+            }
+
+            passu.addEntry(db, args.title, password, args.username, args.description);
+            prompt.log('Password added');
+            modified = true;
+            cb();
+        });
+
+    prompt.command('passwords show <title>', 'Show password entry')
+        .autocomplete({ data: dbTitleAutocomplete })
+        .option('-p, --pass-only', 'Only show password')
+        .action((args, cb) => {
+            let entry = passu.getEntry(db, args.title);
+            if(!entry) {
+                prompt.log('Entry not found');
+                cb();
+                return;
+            }
+
+            if(args.options['pass-only']) {
+                prompt.log(entry.password);
+                cb();
+                return;
+            }
+            
+            prompt.log(`Title: ${entry.title}`);
+            prompt.log(`Username: ${entry.username || '(none)'}`);
+            prompt.log(`Password: (${entry.password.length} characters)`);
+            prompt.log(`Description: \n ${entry.description || '(none)'}`);
+
+            cb();
+        });
+
+    prompt.command('save', 'Save the password database to file')
+        .action((_args, cb) => {
+            let bytes = passu.saveDatabase(db);
+            fs.writeFileSync(pwFile, bytes);
+            prompt.log(`Password database saved to ${pwFile}`);
+            modified = false;
+            cb();
+        });
+
+    prompt.command('exit').alias('quit')
+        .option('-f, --forced', 'Exit without saving')
+        .action((args, cb) => {
+            if(!args.options.forced && modified) {
+                prompt.log('Unsaved changes detected. Please save your password database using \'save\', or exit without saving using the \'-f\' option');
+                cb();
+            }
+        });
+
+    prompt
+        .delimiter(`${path.basename(pwFile)}> `)
+        .show();
+};
+
+let args = process.argv.slice(2);
+if(args.length < 1) {
+    console.log(`Usage: passu [-h, --help] <file>`);
+    return;
+}
+else if(args[0] == '-h' || args[0] == '--help') {
+    console.log('HEELP');
+    return;
+}
+
+main(path.resolve(args[0]));

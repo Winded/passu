@@ -21,6 +21,7 @@
   "homepage": "https://github.com/Winded/passu#readme",
   "dependencies": {
     "nodemon": "^1.18.10",
+    "read": "^1.0.7",
     "vorpal": "^1.12.0"
   }
 }

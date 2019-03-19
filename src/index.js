@@ -26,6 +26,49 @@ passu.createNewDatabase = (password) => {
     return db;
 };
 
+passu.generatePassword = (db, policyOverride={}) => {
+    let policy = { ...db.data.passwordPolicy, ...policyOverride };
+
+    let characters = '';
+    if(policy.useLowercase) {
+        characters += 'abcdefghijklmnopqrstuvwxyz';
+    }
+    if(policy.useUppercase) {
+        characters += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    }
+    if(policy.useNumbers) {
+        characters += '0123456789';
+    }
+    if(policy.useSpecial) {
+        characters += '+-=/\\';
+    }
+
+    let password = '';
+    for(let i = 0; i < policy.length; i++) {
+        password += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+
+    return password;
+};
+
+passu.findEntries = (db, titleStartsWith='') => {
+    return db.data.entries.filter((entry) => entry.title.startsWith(titleStartsWith));
+};
+
+passu.getEntry = (db, title) => {
+    return db.data.entries.find((entry) => entry.title == title);
+};
+
+passu.addEntry = (db, title, password, username, description) => {
+    let entry = {
+        title: title,
+        username: username || '',
+        password: password,
+        description: description || '',
+    };
+    db.data.entries.push(entry);
+};
+
 passu.loadDatabase = (bytes, password) => {
     let ivByteLength = bytes.readUInt8(0);
     let iv = bytes.slice(1, 1 + ivByteLength);
