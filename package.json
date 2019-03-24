@@ -2,7 +2,7 @@
   "name": "passu",
   "version": "1.0.0",
   "description": "Password manager with CLI interface",
-  "main": "src/index.js",
+  "main": "dist/passu.js",
   "bin": {
     "passu": "./bin/passu"
   },
@@ -20,8 +20,11 @@
   },
   "homepage": "https://github.com/Winded/passu#readme",
   "dependencies": {
-    "nodemon": "^1.18.10",
     "read": "^1.0.7",
     "vorpal": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^11.11.6",
+    "typescript": "^3.3.4000"
   }
 }
