@@ -83,5 +83,8 @@ typings/
 # DynamoDB Local files
 .dynamodb/
 
+# Compiled files
+dist/
+
 # Test passu file
 test.passu*
