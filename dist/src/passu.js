@@ -1,8 +1,11 @@
-const crypto = require('crypto');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const crypto = require("crypto");
 const algorithm = 'aes-256-cbc';
-const hashPassword = (password) => {
+function hashPassword(password) {
     return crypto.createHash('md5').update(password).digest('hex');
-};
+}
+;
 class PasswordDatabase {
     static fromData(bytes, inputPassword) {
         let password = hashPassword(inputPassword);
@@ -52,6 +55,9 @@ class PasswordDatabase {
         }
         return password;
     }
+    allEntries() {
+        return this.data.entries;
+    }
     findEntries(nameStartsWith = '') {
         return this.data.entries.filter((entry) => entry.name.startsWith(nameStartsWith));
     }
@@ -74,6 +80,7 @@ class PasswordDatabase {
         };
         this.data.entries.push(entry);
         this.modified = true;
+        return entry;
     }
     updateEntry(name, newName = null, newPassword = null, newDescription = null) {
         let entry = this.getEntry(name);
@@ -112,6 +119,4 @@ class PasswordDatabase {
         return bytes;
     }
 }
-module.exports = {
-    PasswordDatabase: PasswordDatabase,
-};
+exports.PasswordDatabase = PasswordDatabase;

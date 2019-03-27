@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
 const read = require("read");
-const vorpal = require("vorpal");
+const Vorpal = require("vorpal");
 const passu_1 = require("./passu");
 const passwordPrompt = (prompt) => new Promise((resolve, reject) => {
     read({ prompt: prompt, silent: true }, function (er, password) {
@@ -54,25 +54,24 @@ const main = async () => {
     if (!db) {
         return;
     }
-    const dbNameAutocomplete = (input) => {
-        return db.findEntries(input).map((entry) => entry.name);
+    const dbNameAutocomplete = async () => {
+        return db.allEntries().map((entry) => entry.name);
     };
-    let prompt = vorpal();
+    let prompt = new Vorpal();
     // Remove default 'exit' command to override it.
+    // @ts-ignore
     prompt.commands[1].remove();
     prompt.command('passwords list', 'List password entries').alias('pw l')
-        .action((_args, cb) => {
+        .action(async (_args) => {
         let entries = db.findEntries().map((entry) => entry.name);
         if (entries.length == 0) {
             prompt.log('No entries found');
-            cb();
             return;
         }
         entries.forEach((entry) => prompt.log(entry));
-        cb();
     });
     prompt.command('passwords new <name> [description]', 'Create new password entry').alias('pw n')
-        .action(async (args, cb) => {
+        .action(async (args) => {
         let password = await passwordPrompt('Password (leave empty to generate): ');
         if (!password) {
             password = db.generatePassword();
@@ -84,38 +83,33 @@ const main = async () => {
         catch (err) {
             prompt.log(`Failed to add password entry: ${err}`);
         }
-        cb();
     });
     prompt.command('passwords show <name>', 'Show password entry').alias('pw s')
         .autocomplete({ data: dbNameAutocomplete })
         .option('-p, --pass-only', 'Only show password')
-        .action((args, cb) => {
+        .action(async (args) => {
         let entry = db.getEntry(args.name);
         if (!entry) {
             prompt.log('Entry not found');
-            cb();
             return;
         }
         if (args.options['pass-only']) {
             prompt.log(entry.password);
-            cb();
             return;
         }
         prompt.log(`Name: ${entry.name}`);
         prompt.log(`Password: (${entry.password.length} characters)`);
         prompt.log(`Description: \n ${entry.description || '(none)'}`);
-        cb();
     });
     prompt.command('passwords edit <name>', 'Edit a password entry').alias('pw e')
         .autocomplete({ data: dbNameAutocomplete })
         .option('-n, --new-name <newname>', 'Change name of entry')
         .option('-d, --description <newdescription>', 'Change description of entry')
         .option('-p, --change-password', 'Change password')
-        .action(async (args, cb) => {
+        .action(async (args) => {
         let entry = db.getEntry(args.name);
         if (!entry) {
             prompt.log('Entry not found');
-            cb();
             return;
         }
         let newName = args.options['new-name'] || null;
@@ -130,11 +124,10 @@ const main = async () => {
         }
         db.updateEntry(args.name, newName, newPassword, newDescription);
         prompt.log('Entry updated');
-        cb();
     });
     prompt.command('passwords delete <name>', 'Delete a password entry').alias('pw d')
         .autocomplete({ data: dbNameAutocomplete })
-        .action((args, cb) => {
+        .action(async (args) => {
         try {
             db.removeEntry(args.name);
             prompt.log('Entry removed');
@@ -142,21 +135,21 @@ const main = async () => {
         catch (err) {
             prompt.log(`Error: ${err}`);
         }
-        cb();
     });
     prompt.command('save', 'Save the password database to file')
-        .action((_args, cb) => {
+        .action(async (_args) => {
         let bytes = db.save();
         fs.writeFileSync(pwFile, bytes);
         prompt.log(`Password database saved to ${pwFile}`);
-        cb();
     });
     prompt.command('exit').alias('quit')
         .option('-f, --forced', 'Exit without saving')
-        .action((args, cb) => {
+        .action(async (args) => {
         if (!args.options.forced && db.modified) {
             prompt.log('Unsaved changes detected. Please save your password database using \'save\', or exit without saving using the \'-f\' option');
-            cb();
+        }
+        else {
+            prompt.hide();
         }
     });
     prompt

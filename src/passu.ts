@@ -93,6 +93,10 @@ export class PasswordDatabase {
         return password;
     }
 
+    allEntries() : ReadonlyArray<PasswordEntry> {
+        return this.data.entries;
+    }
+
     findEntries(nameStartsWith: string = ''): Array<PasswordEntry> {
         return this.data.entries.filter((entry) => entry.name.startsWith(nameStartsWith));
     }
@@ -101,7 +105,7 @@ export class PasswordDatabase {
         return this.data.entries.find((entry) => entry.name == name);
     }
 
-    addEntry(name: string, password: string, description: string): void {
+    addEntry(name: string, password: string, description: string): PasswordEntry {
         if (!/^[a-zA-Z0-9\-]+$/.test(name)) {
             throw new EvalError('Name must only contain alphabetic characters, numbers and dashes');
         }
@@ -119,6 +123,7 @@ export class PasswordDatabase {
         this.data.entries.push(entry);
 
         this.modified = true;
+        return entry;
     }
 
     updateEntry(name: string, newName: string = null, newPassword: string = null, newDescription: string = null): PasswordEntry {

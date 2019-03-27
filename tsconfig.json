@@ -5,6 +5,7 @@
         "module": "commonjs"
     },
     "include": [
-        "./src/**/*"
+        "./src/**/*",
+        "./tests/**/*"
     ]
 }
