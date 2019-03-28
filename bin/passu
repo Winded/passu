@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-require('../dist/src/cli');
+require('../dist/src/cli').runPrompt(process.argv.slice(2));

@@ -15,7 +15,7 @@ const passwordPrompt = (prompt : string): Promise<string> => new Promise((resolv
     });
 });
 
-const loadOrCreateDb = async (pwFile) => {
+export async function loadOrCreateDb(pwFile: string): Promise<PasswordDatabase> {
     if(fs.existsSync(pwFile)) {
         console.log('Opening password file.');
 
@@ -42,24 +42,7 @@ const loadOrCreateDb = async (pwFile) => {
     }
 }
 
-const main = async () => {
-    let args = process.argv.slice(2);
-    if(args.length < 1) {
-        console.log(`Usage: passu [-h, --help] <file>`);
-        return;
-    }
-    else if(args[0] == '-h' || args[0] == '--help') {
-        console.log('HEELP');
-        return;
-    }
-
-    let pwFile = path.resolve(args[0]);
-
-    let db = await loadOrCreateDb(pwFile);
-    if(!db) {
-        return;
-    }
-
+export async function createPrompt(db: PasswordDatabase, delimiter: string, writeFileFunc: (bytes: Buffer) => void): Promise<Vorpal> {
     const dbNameAutocomplete = async () => {
         return db.allEntries().map((entry) => entry.name);
     };
@@ -158,8 +141,7 @@ const main = async () => {
     prompt.command('save', 'Save the password database to file')
         .action(async (_args) => {
             let bytes = db.save();
-            fs.writeFileSync(pwFile, bytes);
-            prompt.log(`Password database saved to ${pwFile}`);
+            writeFileFunc(bytes);
         });
 
     prompt.command('exit').alias('quit')
@@ -173,8 +155,28 @@ const main = async () => {
         });
 
     prompt
-        .delimiter(`${path.basename(pwFile)}> `)
-        .show();
-};
+        .delimiter(delimiter);
 
-main();
+    return prompt;
+}
+
+export async function runPrompt(args: Array<string>): Promise<void> {
+    if(args.length < 1) {
+        console.log(`Usage: passu <file>`);
+        return;
+    }
+
+    let pwFile = path.resolve(args[0]);
+
+    let db = await loadOrCreateDb(pwFile);
+    if(!db) {
+        return;
+    }
+
+    let prompt = await createPrompt(db, `${path.basename(pwFile)}> `, (bytes: Buffer) => {
+        fs.writeFileSync(pwFile, bytes);
+        prompt.log(`Password database saved to ${pwFile}`);
+    });
+
+    prompt.show();
+};
