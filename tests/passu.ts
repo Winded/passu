@@ -12,7 +12,7 @@ describe('Database encryption and decryption', () => {
         let bytes = db.save();
 
         let decryptedDb = PasswordDatabase.fromData(bytes, pwInput);
-        let entry = decryptedDb.data.entries[0];
+        let entry = decryptedDb.getEntry('test');
         
         expect(entry.name).to.eq('test');
         expect(entry.password).to.eq('mypassword');

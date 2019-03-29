@@ -22,8 +22,8 @@ interface PasswordEntry {
 }
 
 interface PasswordData {
-    passwordPolicy: PasswordPolicy,
-    entries: Array<PasswordEntry>,
+    passwordPolicy: PasswordPolicy;
+    entries: Array<PasswordEntry>;
 }
 
 export class PasswordDatabase {

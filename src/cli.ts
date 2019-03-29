@@ -1,4 +1,3 @@
-
 import * as fs from 'fs';
 import * as path from 'path';
 import * as read from 'read';
@@ -6,7 +5,7 @@ import * as Vorpal from 'vorpal';
 import { PasswordDatabase } from './passu';
 
 const passwordPrompt = (prompt : string): Promise<string> => new Promise((resolve : Function, reject : Function) => {
-    read({ prompt: prompt, silent: true }, function(er, password) {
+    read({ prompt: prompt, silent: true, replace: '*' }, function(er, password) {
         if(er) {
             reject(er);
         } else {
