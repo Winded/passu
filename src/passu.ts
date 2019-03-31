@@ -6,12 +6,12 @@ function hashPassword(password: string): string {
     return crypto.createHash('md5').update(password).digest('hex');
 };
 
-interface PasswordPolicy {
-    length?: number;
-    useLowercase?: boolean;
-    useUppercase?: boolean;
-    useNumbers?: boolean;
-    useSpecial?: boolean;
+export interface PasswordPolicy {
+    readonly length?: number;
+    readonly useLowercase?: boolean;
+    readonly useUppercase?: boolean;
+    readonly useNumbers?: boolean;
+    readonly useSpecial?: boolean;
 }
 
 interface PasswordEntry {
@@ -49,7 +49,7 @@ export class PasswordDatabase {
 
     modified: boolean;
     password: string;
-    data: PasswordData;
+    private data: PasswordData;
 
     constructor(inputPassword: string) {
         this.modified = false;
@@ -66,6 +66,19 @@ export class PasswordDatabase {
             },
             entries: [],
         };
+    }
+
+    get defaultPolicy() {
+        return this.data.passwordPolicy;
+    }
+
+    set defaultPolicy(value: PasswordPolicy) {
+        if(value.length !== undefined && value.length <= 0) {
+            throw new EvalError(`Password policy length can't be 0 or lower`);
+        }
+        
+        this.data.passwordPolicy = { ...this.data.passwordPolicy, ...value };
+        this.modified = true;
     }
 
     generatePassword(entryName: string): PasswordEntry {

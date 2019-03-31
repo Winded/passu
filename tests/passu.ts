@@ -2,6 +2,27 @@ import { expect } from 'chai';
 import 'mocha';
 import { PasswordDatabase } from '../src/passu';
 
+describe('Default policy', () => {
+    it('should update default policy', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        db.defaultPolicy = {
+            length: 16,
+            useLowercase: false,
+            useUppercase: true,
+            useNumbers: true,
+            useSpecial: true,
+        };
+        
+        expect(db.defaultPolicy.length).to.eq(16);
+        expect(db.defaultPolicy.useLowercase).to.eq(false);
+        expect(db.defaultPolicy.useUppercase).to.eq(true);
+        expect(db.defaultPolicy.useNumbers).to.eq(true);
+        expect(db.defaultPolicy.useSpecial).to.eq(true);
+    });
+});
+
 describe('Database encryption and decryption', () => {
     it('should encrypt and decrypt the database successfully', () => {
         let pwInput = 'testpassword';

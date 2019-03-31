@@ -4,9 +4,9 @@ import * as read from 'read';
 import * as Vorpal from 'vorpal';
 import { PasswordDatabase } from './passu';
 
-const passwordPrompt = (prompt : string): Promise<string> => new Promise((resolve : Function, reject : Function) => {
-    read({ prompt: prompt, silent: true, replace: '*' }, function(er, password) {
-        if(er) {
+const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve: Function, reject: Function) => {
+    read({ prompt: prompt, silent: true, replace: '*' }, function (er, password) {
+        if (er) {
             reject(er);
         } else {
             resolve(password);
@@ -15,7 +15,7 @@ const passwordPrompt = (prompt : string): Promise<string> => new Promise((resolv
 });
 
 export async function loadOrCreateDb(pwFile: string): Promise<PasswordDatabase> {
-    if(fs.existsSync(pwFile)) {
+    if (fs.existsSync(pwFile)) {
         console.log('Opening password file.');
 
         let bytes = fs.readFileSync(pwFile);
@@ -23,7 +23,7 @@ export async function loadOrCreateDb(pwFile: string): Promise<PasswordDatabase> 
 
         try {
             return PasswordDatabase.fromData(bytes, pwInput);
-        } catch(SyntaxError) {
+        } catch (SyntaxError) {
             console.log('Failed to open password file. Either the file is corrupted or you provided an invalid password.');
             return null;
         }
@@ -32,7 +32,7 @@ export async function loadOrCreateDb(pwFile: string): Promise<PasswordDatabase> 
 
         let pwInput = await passwordPrompt('Master password: ');
         let pwInputConfirm = await passwordPrompt('Confirm password: ');
-        if(pwInput != pwInputConfirm) {
+        if (pwInput != pwInputConfirm) {
             console.log('ERROR: Passwords do not match.');
             return null;
         }
@@ -52,10 +52,51 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
     // @ts-ignore
     prompt.commands[1].remove();
 
+    prompt.command('default-policy view', 'View default policy').alias('dp v')
+        .action(async (_args) => {
+            let policy = db.defaultPolicy;
+            prompt.log(`Length: ${policy.length}`);
+            prompt.log(`Lowercase: ${policy.useLowercase ? 'yes' : 'no'}`);
+            prompt.log(`Uppercase: ${policy.useUppercase ? 'yes' : 'no'}`);
+            prompt.log(`Numbers: ${policy.useNumbers ? 'yes' : 'no'}`);
+            prompt.log(`Special characters: ${policy.useSpecial ? 'yes' : 'no'}`);
+        });
+    prompt.command('default-policy change', 'Change default policy').alias('dp c')
+        .option('-l, --length <value>', 'Length of generated passwords')
+        .option('-lo, --use-lowercase <value>', 'Use lowercase characters in generated passwords')
+        .option('-u, --use-uppercase <value>', 'Use uppercase characters in generated passwords')
+        .option('-n, --use-numbers <value>', 'Use numbers in generated passwords')
+        .option('-s, --use-special <value>', 'Use special characters in generated passwords')
+        .action(async (args) => {
+            let defaultPolicy = db.defaultPolicy;
+            let newLength = parseInt(args.options['length']);
+            try {
+                db.defaultPolicy = {
+                    length: newLength !== NaN ? newLength : defaultPolicy.length,
+                    useLowercase: args.options['use-lowercase'] !== undefined
+                        ? args.options['use-lowercase'] ? true : false
+                        : defaultPolicy.useLowercase,
+                    useUppercase: args.options['use-uppercase'] !== undefined
+                        ? args.options['use-uppercase'] ? true : false
+                        : defaultPolicy.useUppercase,
+                    useNumbers: args.options['use-numbers'] !== undefined
+                        ? args.options['use-numbers'] ? true : false
+                        : defaultPolicy.useNumbers,
+                    useSpecial: args.options['use-special'] !== undefined
+                        ? args.options['use-special'] ? true : false
+                        : defaultPolicy.useSpecial,
+                };
+            } catch(err) {
+                prompt.log(`ERROR: ${err}`);
+            }
+
+            prompt.log('Default policy updated');
+        });
+
     prompt.command('passwords list', 'List password entries').alias('pw l')
         .action(async (_args) => {
             let entries = db.findEntries().map((entry) => entry.name);
-            if(entries.length == 0) {
+            if (entries.length == 0) {
                 prompt.log('No entries found');
                 return;
             }
@@ -69,7 +110,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
 
             try {
                 db.addEntry(args.name, password, args.description);
-                if(!password) {
+                if (!password) {
                     db.generatePassword(args.name);
                 }
                 prompt.log('Password added');
@@ -83,16 +124,16 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
         .option('-p, --pass-only', 'Only show password')
         .action(async (args) => {
             let entry = db.getEntry(args.name);
-            if(!entry) {
+            if (!entry) {
                 prompt.log('Entry not found');
                 return;
             }
 
-            if(args.options['pass-only']) {
+            if (args.options['pass-only']) {
                 prompt.log(entry.password);
                 return;
             }
-            
+
             prompt.log(`Name: ${entry.name}`);
             prompt.log(`Password: (${entry.password.length} characters)`);
             prompt.log(`Description: \n ${entry.description || '(none)'}`);
@@ -105,22 +146,22 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
         .option('-p, --change-password', 'Change password')
         .action(async (args) => {
             let entry = db.getEntry(args.name);
-            if(!entry) {
+            if (!entry) {
                 prompt.log('Entry not found');
                 return;
             }
 
-            let newName = args.options['new-name'] || null;
-            let newDescription = args.options.description || null;
+            let newName = args.options['new-name'] || null;
+            let newDescription = args.options.description || null;
             let newPassword = null;
 
-            if(args.options['change-password']) {
+            if (args.options['change-password']) {
                 newPassword = await passwordPrompt('Password (leave empty to generate): ');
             }
 
             db.updateEntry(args.name, newName, newPassword, newDescription);
 
-            if(args.options['change-password'] && !newPassword) {
+            if (args.options['change-password'] && !newPassword) {
                 db.generatePassword(args.name);
             }
 
@@ -133,7 +174,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             try {
                 db.removeEntry(args.name);
                 prompt.log('Entry removed');
-            } catch(err) {
+            } catch (err) {
                 prompt.log(`Error: ${err}`);
             }
         });
@@ -147,7 +188,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
     prompt.command('exit').alias('quit')
         .option('-f, --forced', 'Exit without saving')
         .action(async (args) => {
-            if(!args.options.forced && db.modified) {
+            if (!args.options.forced && db.modified) {
                 prompt.log('Unsaved changes detected. Please save your password database using \'save\', or exit without saving using the \'-f\' option');
             } else {
                 prompt.hide();
@@ -161,7 +202,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
 }
 
 export async function runPrompt(args: Array<string>): Promise<void> {
-    if(args.length < 1) {
+    if (args.length < 1) {
         console.log(`Usage: passu <file>`);
         return;
     }
@@ -169,7 +210,7 @@ export async function runPrompt(args: Array<string>): Promise<void> {
     let pwFile = path.resolve(args[0]);
 
     let db = await loadOrCreateDb(pwFile);
-    if(!db) {
+    if (!db) {
         return;
     }
 
