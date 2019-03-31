@@ -20,12 +20,83 @@ describe('Database encryption and decryption', () => {
     });
 });
 
+describe('Add/Edit/Delete entries', () => {
+    it('should successfully add an entry', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let entry = db.addEntry('test', 'its a password134125+-++\\/', 'description');
+        entry = db.getEntry('test');
+
+        expect(entry).to.not.eq(undefined);
+        expect(entry.password).to.eq('its a password134125+-++\\/');
+        expect(entry.description).to.eq('description');
+    });
+    it('should fail when entry has invalid name', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        
+        expect(() => {
+            db.addEntry('test+test space', 'its a password134125+-++\\/', 'description');
+        }).to.throw(EvalError, 'Name must only contain alphabetic characters, numbers and dashes');
+    });
+    it('should fail when duplicate entry is added', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        db.addEntry('test', 'its a password134125+-++\\/', 'description');
+
+        expect(() => {
+            db.addEntry('test', 'its a password134125+-++\\/', 'description');
+        }).to.throw('Entry test already exists.')
+    });
+    it('should successfully edit an entry', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let entry = db.addEntry('test', 'its a password134125+-++\\/', 'description');
+        entry = db.getEntry('test');
+
+        expect(entry).to.not.eq(undefined);
+        expect(entry.password).to.eq('its a password134125+-++\\/');
+        expect(entry.description).to.eq('description');
+
+        db.updateEntry('test', 'test1', 'newpassword', 'another description', {
+            useNumbers: false,
+        });
+        entry = db.getEntry('test1');
+
+        expect(entry).to.not.eq(undefined);
+        expect(entry.password).to.eq('newpassword');
+        expect(entry.description).to.eq('another description');
+        expect(entry.policyOverride.useNumbers).to.eq(false);
+    });
+    it('should successfully delete an entry', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let entry = db.addEntry('test', 'its a password134125+-++\\/', 'description');
+        entry = db.getEntry('test');
+
+        expect(entry).to.not.eq(null);
+        expect(entry.password).to.eq('its a password134125+-++\\/');
+        expect(entry.description).to.eq('description');
+
+        db.removeEntry('test');
+        entry = db.getEntry('test');
+
+        expect(entry).to.eq(undefined);
+    });
+});
+
 describe('Password generation', () => {
     it('should generate password with default password policy', () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let entry = db.addEntry('test', db.generatePassword(), 'description');
+        let entry = db.addEntry('test', '', 'description');
+        db.generatePassword('test');
         
         expect(entry.password.length).to.eq(32);
     });
@@ -34,13 +105,14 @@ describe('Password generation', () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let entry = db.addEntry('test', db.generatePassword({
+        let entry = db.addEntry('test', '', 'description', {
             length: 16,
             useLowercase: true,
             useNumbers: true,
             useUppercase: false,
             useSpecial: false,
-        }), 'description');
+        });
+        db.generatePassword('test');
         
         expect(entry.password.length).to.eq(16);
         expect(/[a-z]/.test(entry.password)).to.eq(true);

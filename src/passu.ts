@@ -68,8 +68,13 @@ export class PasswordDatabase {
         };
     }
 
-    generatePassword(policyOverride : PasswordPolicy = {}): string {
-        let policy = { ...this.data.passwordPolicy, ...policyOverride };
+    generatePassword(entryName: string): PasswordEntry {
+        let entry = this.getEntry(entryName);
+        if (!entry) {
+            throw new Error(`Entry ${name} not found.`);
+        }
+
+        let policy = { ...this.data.passwordPolicy, ...entry.policyOverride };
 
         let characters = '';
         if (policy.useLowercase) {
@@ -90,10 +95,13 @@ export class PasswordDatabase {
             password += characters.charAt(Math.floor(Math.random() * characters.length));
         }
 
-        return password;
+        entry.password = password;
+
+        this.modified = true;
+        return entry;
     }
 
-    allEntries() : ReadonlyArray<PasswordEntry> {
+    allEntries(): ReadonlyArray<PasswordEntry> {
         return this.data.entries;
     }
 
@@ -105,7 +113,7 @@ export class PasswordDatabase {
         return this.data.entries.find((entry) => entry.name == name);
     }
 
-    addEntry(name: string, password: string, description: string): PasswordEntry {
+    addEntry(name: string, password: string, description: string = null, policyOverride: PasswordPolicy = {}): PasswordEntry {
         if (!/^[a-zA-Z0-9\-]+$/.test(name)) {
             throw new EvalError('Name must only contain alphabetic characters, numbers and dashes');
         }
@@ -118,7 +126,7 @@ export class PasswordDatabase {
             name: name,
             password: password,
             description: description || '',
-            policyOverride: {},
+            policyOverride: policyOverride,
         };
         this.data.entries.push(entry);
 
@@ -126,7 +134,7 @@ export class PasswordDatabase {
         return entry;
     }
 
-    updateEntry(name: string, newName: string = null, newPassword: string = null, newDescription: string = null): PasswordEntry {
+    updateEntry(name: string, newName: string = null, newPassword: string = null, newDescription: string = null, policyOverride: PasswordPolicy = null): PasswordEntry {
         let entry = this.getEntry(name);
         if (!entry) {
             throw new Error(`Entry ${name} not found.`);
@@ -136,9 +144,14 @@ export class PasswordDatabase {
             throw new EvalError('Name must only contain alphabetic characters, numbers and dashes');
         }
 
+        if(newName && this.getEntry(newName)) {
+            throw new Error(`Entry ${newName} already exists.`);
+        }
+
         entry.name = newName || entry.name;
         entry.password = newPassword || entry.password;
         entry.description = newDescription || entry.description;
+        entry.policyOverride = policyOverride || entry.policyOverride;
 
         this.modified = true;
         return entry;

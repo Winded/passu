@@ -66,12 +66,12 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
     prompt.command('passwords new <name> [description]', 'Create new password entry').alias('pw n')
         .action(async (args) => {
             let password = await passwordPrompt('Password (leave empty to generate): ');
-            if(!password) {
-                password = db.generatePassword();
-            }
 
             try {
                 db.addEntry(args.name, password, args.description);
+                if(!password) {
+                    db.generatePassword(args.name);
+                }
                 prompt.log('Password added');
             } catch (err) {
                 prompt.log(`Failed to add password entry: ${err}`);
@@ -115,14 +115,15 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             let newPassword = null;
 
             if(args.options['change-password']) {
-                let password = await passwordPrompt('Password (leave empty to generate): ');
-                if(!password) {
-                    password = db.generatePassword(entry.policyOverride);
-                }
-                newPassword = password;
+                newPassword = await passwordPrompt('Password (leave empty to generate): ');
             }
 
             db.updateEntry(args.name, newName, newPassword, newDescription);
+
+            if(args.options['change-password'] && !newPassword) {
+                db.generatePassword(args.name);
+            }
+
             prompt.log('Entry updated');
         });
 
