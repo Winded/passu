@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as read from 'read';
 import * as Vorpal from 'vorpal';
-import { PasswordDatabase } from './passu';
+import { PasswordDatabase, PasswordPolicy } from './passu';
 
 const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve, reject) => {
     read({ prompt: prompt, silent: true, replace: '*' }, function (er, password) {
@@ -73,7 +73,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             let newLength = parseInt(args.options['length']);
             try {
                 db.defaultPolicy = {
-                    length: newLength !== NaN ? newLength : defaultPolicy.length,
+                    length: !isNaN(newLength) ? newLength : defaultPolicy.length,
                     useLowercase: args.options['use-lowercase'] !== undefined
                         ? args.options['use-lowercase'] ? true : false
                         : defaultPolicy.useLowercase,
@@ -167,6 +167,74 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             }
 
             prompt.log('Entry updated');
+        });
+
+    prompt.command('passwords policy view <name>', 'Show password policy of entry').alias('pw p v')
+        .autocomplete({ data: dbNameAutocomplete })
+        .action(async (args) => {
+            let entry = db.getEntry(args.name);
+            if (!entry) {
+                prompt.log('Entry not found');
+                return;
+            }
+
+            let policy = entry.policyOverride;
+            const printPolicyBool = (key: string): string => {
+                return policy[key] !== undefined ? (policy[key] ? 'yes' : 'no') : (db.defaultPolicy[key] ? 'yes' : 'no') + ' (default)';
+            };
+
+            prompt.log(`Length: ${policy.length !== undefined ? policy.length : db.defaultPolicy.length + ' (default)'}`);
+            prompt.log(`Lowercase: ${printPolicyBool('useLowercase')}`);
+            prompt.log(`Uppercase: ${printPolicyBool('useUppercase')}`);
+            prompt.log(`Numbers: ${printPolicyBool('useNumbers')}`);
+            prompt.log(`Special characters: ${printPolicyBool('useSpecial')}`);
+        });
+    prompt.command('passwords policy change <name>', 'Change password policy of entry').alias('pw p c')
+        .autocomplete({ data: dbNameAutocomplete })
+        .option('-l, --length <value>', 'Length of generated passwords')
+        .option('-lo, --use-lowercase <value>', 'Use lowercase characters in generated passwords')
+        .option('-u, --use-uppercase <value>', 'Use uppercase characters in generated passwords')
+        .option('-n, --use-numbers <value>', 'Use numbers in generated passwords')
+        .option('-s, --use-special <value>', 'Use special characters in generated passwords')
+        .option('-rl, --reset-length', 'Reset length to default policy')
+        .option('-rlc, --reset-use-lowercase', 'Reset lowercase usage to default policy')
+        .option('-ruc, --reset-use-uppercase', 'Reset uppercase usage to default policy')
+        .option('-rn, --reset-use-numbers', 'Reset numbers usage to default policy')
+        .option('-rs, --reset-use-special', 'Reset special characters usage to default policy')
+        .action(async (args) => {
+            let entry = db.getEntry(args.name);
+            if (!entry) {
+                prompt.log('Entry not found');
+                return;
+            }
+
+            let oldPolicy = entry.policyOverride;
+            const getPolicyBoolValue = (key: string, optKey: string, optResetKey: string): boolean => {
+                return !args.options[optResetKey] ? args.options[optKey] !== undefined
+                        ? args.options[optKey] ? true : false
+                        : oldPolicy[key]
+                    : undefined;
+            };
+
+            let newLength = parseInt(args.options['length']);
+            try {
+                let newPolicy: PasswordPolicy = {
+                    length: !args.options['reset-length'] ? !isNaN(newLength)
+                            ? newLength
+                            : oldPolicy.length
+                        : undefined,
+                    useLowercase: getPolicyBoolValue('useLowercase', 'use-lowercase', 'reset-use-lowercase'),
+                    useUppercase: getPolicyBoolValue('useUppercase', 'use-uppercase', 'reset-use-uppercase'),
+                    useNumbers: getPolicyBoolValue('useNumbers', 'use-numbers', 'reset-use-numbers'),
+                    useSpecial: getPolicyBoolValue('useSpecial', 'use-special', 'reset-use-special'),
+                };
+
+                db.updateEntry(entry.name, null, null, null, newPolicy);
+            } catch(err) {
+                prompt.log(`ERROR: ${err}`);
+            }
+
+            prompt.log('Entry policy updated');
         });
 
     prompt.command('passwords delete <name>', 'Delete a password entry').alias('pw d')
