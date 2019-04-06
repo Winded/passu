@@ -16,7 +16,7 @@ describe('CLI commands', () => {
             useSpecial: true,
         };
 
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {
@@ -28,6 +28,7 @@ describe('CLI commands', () => {
 
         expect(output.trim()).to.eq(`Length: 16\nLowercase: no\nUppercase: yes\nNumbers: yes\nSpecial characters: yes`);
     });
+
     it('should change default policy', async () => {
         let pwInput = 'testpassword';
 
@@ -40,7 +41,7 @@ describe('CLI commands', () => {
             useSpecial: true,
         };
 
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {
@@ -64,7 +65,7 @@ describe('CLI commands', () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {
@@ -82,7 +83,7 @@ describe('CLI commands', () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {
@@ -101,7 +102,7 @@ describe('CLI commands', () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {
@@ -111,15 +112,83 @@ describe('CLI commands', () => {
 
         db.addEntry('test', 'mypassword', 'description');
 
-        prompt.execSync('passwords show test -p');
+        prompt.execSync('passwords show test --pass-only');
 
         expect(output.trim()).to.eq('mypassword');
     });
+
+    it('should create new password entry', async () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => 'mypassword');
+
+        let output = '';
+        prompt.pipe((text) => {
+            output += text + '\n';
+            return '';
+        });
+
+        await prompt.exec('passwords new test description');
+
+        let entry = db.getEntry('test');
+        expect(entry).to.not.eq(undefined);
+        expect(entry.name).to.eq('test');
+        expect(entry.password).to.eq('mypassword');
+        expect(entry.description).to.eq('description');
+        expect(output.trim()).to.eq('Password added');
+    });
+
+    it('should edit password entry', async () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
+
+        let output = '';
+        prompt.pipe((text) => {
+            output += text + '\n';
+            return '';
+        });
+
+        db.addEntry('test', 'mypassword', 'description');
+
+        prompt.execSync('passwords edit test --new-name test3 --description "another description"');
+
+        let entry = db.getEntry('test3');
+
+        expect(entry).to.not.eq(undefined);
+        expect(entry.name).to.eq('test3');
+        expect(entry.description).to.eq('another description');
+        expect(output.trim()).to.eq('Entry updated');
+    });
+    it('should edit password', async () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => 'newpassword');
+
+        let output = '';
+        prompt.pipe((text) => {
+            output += text + '\n';
+            return '';
+        });
+
+        db.addEntry('test', 'mypassword', 'description');
+
+        await prompt.exec('passwords edit test --change-password');
+
+        let entry = db.getEntry('test');
+        expect(entry).to.not.eq(undefined);
+        expect(entry.password).to.eq('newpassword');
+        expect(output.trim()).to.eq('Entry updated');
+    });
+
     it('should delete password entry', async () => {
         let pwInput = 'testpassword';
 
         let db = new PasswordDatabase(pwInput);
-        let prompt = await createPrompt(db, 'test> ', (_bytes) => {});
+        let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
 
         let output = '';
         prompt.pipe((text) => {

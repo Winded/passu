@@ -120,6 +120,27 @@ describe('Password generation', () => {
         db.generatePassword('test');
         
         expect(entry.password.length).to.eq(32);
+        expect(/[a-zA-Z0-9\+\-\=\/\\]/.test(entry.password)).to.eq(true);
+    });
+
+    it('should generate password with updated default password policy', () => {
+        let pwInput = 'testpassword';
+
+        let db = new PasswordDatabase(pwInput);
+        db.defaultPolicy = {
+            length: 20,
+            useLowercase: true,
+            useUppercase: true,
+            useNumbers: true,
+            useSpecial: false,
+        };
+
+        let entry = db.addEntry('test', '', 'description');
+        db.generatePassword('test');
+        
+        expect(entry.password.length).to.eq(20);
+        expect(/[a-zA-Z0-9]/.test(entry.password)).to.eq(true);
+        expect(/[\+\-\=\/\\]/.test(entry.password)).to.eq(false);
     });
 
     it('should generate password with specified password policy', () => {

@@ -4,7 +4,7 @@ import * as read from 'read';
 import * as Vorpal from 'vorpal';
 import { PasswordDatabase } from './passu';
 
-const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve: Function, reject: Function) => {
+const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve, reject) => {
     read({ prompt: prompt, silent: true, replace: '*' }, function (er, password) {
         if (er) {
             reject(er);
@@ -41,7 +41,8 @@ export async function loadOrCreateDb(pwFile: string): Promise<PasswordDatabase> 
     }
 }
 
-export async function createPrompt(db: PasswordDatabase, delimiter: string, writeFileFunc: (bytes: Buffer) => void): Promise<Vorpal> {
+export async function createPrompt(db: PasswordDatabase, delimiter: string, writeFileFunc: (bytes: Buffer) => void, 
+        readPasswordFunc: (prompt: string) => Promise<string>): Promise<Vorpal> {
     const dbNameAutocomplete = async () => {
         return db.allEntries().map((entry) => entry.name);
     };
@@ -106,7 +107,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
 
     prompt.command('passwords new <name> [description]', 'Create new password entry').alias('pw n')
         .action(async (args) => {
-            let password = await passwordPrompt('Password (leave empty to generate): ');
+            let password = await readPasswordFunc('Password (leave empty to generate): ');
 
             try {
                 db.addEntry(args.name, password, args.description);
@@ -156,7 +157,7 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             let newPassword = null;
 
             if (args.options['change-password']) {
-                newPassword = await passwordPrompt('Password (leave empty to generate): ');
+                newPassword = await readPasswordFunc('Password (leave empty to generate): ');
             }
 
             db.updateEntry(args.name, newName, newPassword, newDescription);
@@ -214,10 +215,10 @@ export async function runPrompt(args: Array<string>): Promise<void> {
         return;
     }
 
-    let prompt = await createPrompt(db, `${path.basename(pwFile)}> `, (bytes: Buffer) => {
+    let prompt = await createPrompt(db, `${path.basename(pwFile)}> `, (bytes) => {
         fs.writeFileSync(pwFile, bytes);
         prompt.log(`Password database saved to ${pwFile}`);
-    });
+    }, passwordPrompt);
 
     prompt.show();
 };
