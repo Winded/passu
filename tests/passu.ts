@@ -121,7 +121,10 @@ describe('PasswordDatabase', () => {
             let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(32);
-            expect(/[a-zA-Z0-9\+\-\=\/\\]/.test(entry.password)).to.eq(true);
+            expect(/[a-z]/.test(entry.password)).to.eq(true);
+            expect(/[A-Z]/.test(entry.password)).to.eq(true);
+            expect(/[0-9]/.test(entry.password)).to.eq(true);
+            expect(/[\+\-\=\/\\]/.test(entry.password)).to.eq(true);
         });
     
         it('should generate password with updated default password policy', () => {
@@ -140,7 +143,9 @@ describe('PasswordDatabase', () => {
             let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(20);
-            expect(/[a-zA-Z0-9]/.test(entry.password)).to.eq(true);
+            expect(/[a-z]/.test(entry.password)).to.eq(true);
+            expect(/[A-Z]/.test(entry.password)).to.eq(true);
+            expect(/[0-9]/.test(entry.password)).to.eq(true);
             expect(/[\+\-\=\/\\]/.test(entry.password)).to.eq(false);
         });
     
@@ -151,15 +156,34 @@ describe('PasswordDatabase', () => {
             db.addEntry('test', '', 'description', {
                 length: 16,
                 useLowercase: true,
-                useNumbers: true,
                 useUppercase: false,
+                useNumbers: true,
                 useSpecial: false,
             });
             let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(16);
             expect(/[a-z]/.test(entry.password)).to.eq(true);
-            expect(/[A-Z\+\-\=\/\\]/.test(entry.password)).to.eq(false);
+            expect(/[A-Z]/.test(entry.password)).to.eq(false);
+            expect(/[0-9]/.test(entry.password)).to.eq(true);
+            expect(/[\+\-\=\/\\]/.test(entry.password)).to.eq(false);
+        });
+    
+        it('should generate password with partially default password policy', () => {
+            let pwInput = 'testpassword';
+    
+            let db = new PasswordDatabase(pwInput);
+            db.addEntry('test', '', 'description', {
+                length: 8,
+                useLowercase: false,
+            });
+            let entry = db.generatePassword('test');
+            
+            expect(entry.password.length).to.eq(8);
+            expect(/[a-z]/.test(entry.password)).to.eq(false);
+            expect(/[A-Z]/.test(entry.password)).to.eq(true);
+            expect(/[0-9]/.test(entry.password)).to.eq(true);
+            expect(/[\+\-\=\/\\]/.test(entry.password)).to.eq(true);
         });
     });
 });

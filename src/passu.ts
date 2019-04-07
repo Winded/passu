@@ -6,6 +6,19 @@ function hashPassword(password: string): string {
     return crypto.createHash('md5').update(password).digest('hex');
 };
 
+function shuffleString(str: string): string {
+    var a = str.split(''),
+    n = a.length;
+
+    for(var i = n - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+    }
+    return a.join('');
+}
+
 export interface PasswordPolicy {
     readonly length?: number;
     readonly useLowercase?: boolean;
@@ -94,24 +107,34 @@ export class PasswordDatabase {
 
         let policy = { ...this.data.passwordPolicy, ...entry.policyOverride };
 
-        let characters = '';
+        let sets: Array<string> = [];
         if (policy.useLowercase) {
-            characters += 'abcdefghijklmnopqrstuvwxyz';
+            sets.push('abcdefghijklmnopqrstuvwxyz');
         }
         if (policy.useUppercase) {
-            characters += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            sets.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
         }
         if (policy.useNumbers) {
-            characters += '0123456789';
+            sets.push('0123456789');
         }
         if (policy.useSpecial) {
-            characters += '+-=/\\';
+            sets.push('+-=/\\');
         }
 
-        let password = '';
-        for (let i = 0; i < policy.length; i++) {
-            password += characters.charAt(Math.floor(Math.random() * characters.length));
+        if(sets.length == 0) {
+            throw new Error(`Entry policy is invalid. No character sets are allowed.`);
         }
+
+        let charactersPerSet = Math.ceil(policy.length / sets.length);
+
+        let password = '';
+        sets.forEach((set) => {
+            for (let i = 0; i < charactersPerSet; i++) {
+                password += set.charAt(Math.floor(Math.random() * set.length));
+            }
+        });
+        password = shuffleString(password);
+        password = password.slice(0, policy.length);
 
         entry = this.updateEntry(entry.name, null, password);
 
