@@ -117,8 +117,8 @@ describe('PasswordDatabase', () => {
             let pwInput = 'testpassword';
     
             let db = new PasswordDatabase(pwInput);
-            let entry = db.addEntry('test', '', 'description');
-            db.generatePassword('test');
+            db.addEntry('test', '', 'description');
+            let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(32);
             expect(/[a-zA-Z0-9\+\-\=\/\\]/.test(entry.password)).to.eq(true);
@@ -136,8 +136,8 @@ describe('PasswordDatabase', () => {
                 useSpecial: false,
             };
     
-            let entry = db.addEntry('test', '', 'description');
-            db.generatePassword('test');
+            db.addEntry('test', '', 'description');
+            let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(20);
             expect(/[a-zA-Z0-9]/.test(entry.password)).to.eq(true);
@@ -148,14 +148,14 @@ describe('PasswordDatabase', () => {
             let pwInput = 'testpassword';
     
             let db = new PasswordDatabase(pwInput);
-            let entry = db.addEntry('test', '', 'description', {
+            db.addEntry('test', '', 'description', {
                 length: 16,
                 useLowercase: true,
                 useNumbers: true,
                 useUppercase: false,
                 useSpecial: false,
             });
-            db.generatePassword('test');
+            let entry = db.generatePassword('test');
             
             expect(entry.password.length).to.eq(16);
             expect(/[a-z]/.test(entry.password)).to.eq(true);

@@ -15,10 +15,10 @@ export interface PasswordPolicy {
 }
 
 interface PasswordEntry {
-    name: string;
-    password: string;
-    description: string;
-    policyOverride: PasswordPolicy;
+    readonly name: string;
+    readonly password: string;
+    readonly description: string;
+    readonly policyOverride: PasswordPolicy;
 }
 
 interface PasswordData {
@@ -81,6 +81,11 @@ export class PasswordDatabase {
         this.modified = true;
     }
 
+    /**
+     * Generates a new password for the given password entry.
+     * @param entryName Name of the entry to generate password for
+     * @returns The updated password entry
+     */
     generatePassword(entryName: string): PasswordEntry {
         let entry = this.getEntry(entryName);
         if (!entry) {
@@ -108,7 +113,7 @@ export class PasswordDatabase {
             password += characters.charAt(Math.floor(Math.random() * characters.length));
         }
 
-        entry.password = password;
+        entry = this.updateEntry(entry.name, null, password);
 
         this.modified = true;
         return entry;
@@ -147,6 +152,16 @@ export class PasswordDatabase {
         return entry;
     }
 
+    /**
+     * Update a password entry. Note that this creates and returns a new entry instance, as password entries are immutable.
+     * @param name Name of the existing password entry
+     * @param newName New name of the entry, or null if not changed
+     * @param newPassword New password of the entry, or null if not changed
+     * @param newDescription New description of the entry, or null if not changed
+     * @param policyOverride New policy override of the entry, or null if not changed
+     * 
+     * @returns The updated entry
+     */
     updateEntry(name: string, newName: string = null, newPassword: string = null, newDescription: string = null, policyOverride: PasswordPolicy = null): PasswordEntry {
         let entry = this.getEntry(name);
         if (!entry) {
@@ -161,13 +176,16 @@ export class PasswordDatabase {
             throw new Error(`Entry ${newName} already exists.`);
         }
 
-        entry.name = newName || entry.name;
-        entry.password = newPassword || entry.password;
-        entry.description = newDescription || entry.description;
-        entry.policyOverride = policyOverride || entry.policyOverride;
+        let newEntry: PasswordEntry = {
+            name: newName || entry.name,
+            password: newPassword || entry.password,
+            description: newDescription || entry.description,
+            policyOverride: policyOverride || entry.policyOverride,
+        };
+        this.data.entries[this.data.entries.indexOf(entry)] = newEntry;
 
         this.modified = true;
-        return entry;
+        return newEntry;
     }
 
     removeEntry(name: string): PasswordEntry {
