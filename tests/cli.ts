@@ -3,6 +3,8 @@ import 'mocha';
 import { PasswordDatabase } from '../src/passu';
 import { createPrompt } from '../src/cli';
 import * as events from 'events';
+import * as clipboardy from 'clipboardy';
+import { platform } from 'os';
 
 describe('CLI commands', () => {
 
@@ -124,6 +126,29 @@ describe('CLI commands', () => {
             prompt.execSync('passwords show test --pass-only');
     
             expect(output.trim()).to.eq('mypassword');
+        });
+
+        it('should copy password to clipboard', async () => {
+            let pwInput = 'testpassword';
+    
+            let db = new PasswordDatabase(pwInput);
+            let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => '');
+    
+            let output = '';
+            prompt.pipe((text) => {
+                output += text + '\n';
+                return '';
+            });
+    
+            db.addEntry('test', 'mypassword', 'description');
+    
+            let oldData = await clipboardy.read();
+
+            await prompt.exec('passwords copy test');
+    
+            expect(await clipboardy.read()).to.eq('mypassword');
+
+            await clipboardy.write(oldData);
         });
     });
 

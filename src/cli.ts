@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as read from 'read';
 import * as Vorpal from 'vorpal';
 import { PasswordDatabase, PasswordPolicy } from './passu';
+import * as clipboardy from 'clipboardy';
 
 const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve, reject) => {
     read({ prompt: prompt, silent: true, replace: '*' }, function (er, password) {
@@ -138,6 +139,23 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
             prompt.log(`Name: ${entry.name}`);
             prompt.log(`Password: (${entry.password.length} characters)`);
             prompt.log(`Description: \n ${entry.description || '(none)'}`);
+        });
+
+    prompt.command('passwords copy <name>', 'Copy password to clipboard').alias('pw c')
+        .autocomplete({ data: dbNameAutocomplete })
+        .action(async (args) => {
+            let entry = db.getEntry(args.name);
+            if (!entry) {
+                prompt.log('Entry not found');
+                return;
+            }
+            
+            try {
+                await clipboardy.write(entry.password);
+                prompt.log('Password copied to clipboard.');
+            } catch(err) {
+                prompt.log('Copy failed. Your environment may not have a clipboard, or is unsupported.');
+            }
         });
 
     prompt.command('passwords edit <name>', 'Edit a password entry').alias('pw e')
