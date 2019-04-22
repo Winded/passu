@@ -1,10 +1,7 @@
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 const algorithm = 'aes-256-cbc';
-
-function hashPassword(password: string): string {
-    return crypto.createHash('md5').update(password).digest('hex');
-};
 
 function shuffleString(str: string): string {
     var a = str.split(''),
@@ -40,16 +37,29 @@ interface PasswordData {
 }
 
 export class PasswordDatabase {
-    static fromData(bytes: Buffer, inputPassword: string) {
-        let password = hashPassword(inputPassword);
+    /**
+     * Decrypt and deserialize a password database from given data buffer.
+     * @param bytes Data buffer to decrypt and deserialize
+     * @param inputPassword Master password of the database, as inputted by user (not hashed)
+     */
+    static fromData(bytes: Buffer, inputPassword: string): PasswordDatabase {
+        let bOffset = 0;
 
-        let ivByteLength = bytes.readUInt8(0);
-        let iv = bytes.slice(1, 1 + ivByteLength);
+        let ivByteLength = bytes.readUInt8(bOffset);
+        bOffset += 1;
+        let iv = bytes.slice(bOffset, bOffset + ivByteLength);
+        bOffset += ivByteLength;
 
-        let edataByteLength = bytes.readUInt32BE(1 + ivByteLength);
-        let edata = bytes.slice(1 + ivByteLength + 4, 1 + ivByteLength + 4 + edataByteLength);
+        let passwordSalt = bytes.slice(bOffset, bOffset + 29).toString();
+        bOffset += 29;
 
-        let decipher = crypto.createDecipheriv(algorithm, password, iv);
+        let edataByteLength = bytes.readUInt32BE(bOffset);
+        bOffset += 4;
+        let edata = bytes.slice(bOffset, bOffset + edataByteLength);
+
+        let passwordHash = bcrypt.hashSync(inputPassword, passwordSalt).substr(29);
+
+        let decipher = crypto.createDecipheriv(algorithm, passwordHash + '0', iv);
         let sdata = Buffer.concat([decipher.update(edata), decipher.final()]).toString();
 
         let data = JSON.parse(sdata);
@@ -61,13 +71,12 @@ export class PasswordDatabase {
     }
 
     modified: boolean;
-    password: string;
+    private passwordHash: string;
+    private passwordSalt: string;
     private data: PasswordData;
 
     constructor(inputPassword: string) {
-        this.modified = false;
-
-        this.password = hashPassword(inputPassword);
+        this.password = inputPassword;
 
         this.data = {
             passwordPolicy: {
@@ -79,6 +88,8 @@ export class PasswordDatabase {
             },
             entries: [],
         };
+
+        this.modified = false;
     }
 
     get defaultPolicy() {
@@ -92,6 +103,14 @@ export class PasswordDatabase {
         
         this.data.passwordPolicy = { ...this.data.passwordPolicy, ...value };
         this.modified = true;
+    }
+
+    /**
+     * Set a new password for the password database
+     */
+    set password(value: string) {
+        this.passwordSalt = bcrypt.genSaltSync(10);
+        this.passwordHash = bcrypt.hashSync(value, this.passwordSalt).substr(29);
     }
 
     /**
@@ -222,18 +241,31 @@ export class PasswordDatabase {
         return entry;
     }
 
+    /**
+     * Serialize the password database and encrypt it with the master password.
+     * @returns Data buffer containing the encrypted password database.
+     */
     save(): Buffer {
         let iv = Buffer.from(crypto.randomBytes(16));
-        let cypher = crypto.createCipheriv(algorithm, this.password, iv);
+        let cypher = crypto.createCipheriv(algorithm, this.passwordHash + '0', iv);
 
         let sdata = JSON.stringify(this.data);
         let edata = Buffer.concat([cypher.update(sdata, 'utf8'), cypher.final()]);
 
-        let bytes = Buffer.alloc(1 + iv.byteLength + 4 + edata.byteLength);
-        bytes.writeUInt8(iv.byteLength, 0);
-        iv.copy(bytes, 1);
-        bytes.writeUInt32BE(edata.byteLength, 1 + iv.byteLength);
-        edata.copy(bytes, 1 + iv.byteLength + 4);
+        let bytes = Buffer.alloc(1 + iv.byteLength + 29 + 4 + edata.byteLength);
+        let bOffset = 0;
+
+        bytes.writeUInt8(iv.byteLength, bOffset);
+        bOffset += 1;
+        iv.copy(bytes, bOffset);
+        bOffset += iv.byteLength;
+
+        Buffer.from(this.passwordSalt).copy(bytes, bOffset);
+        bOffset += 29;
+
+        bytes.writeUInt32BE(edata.byteLength, bOffset);
+        bOffset += 4;
+        edata.copy(bytes, bOffset);
 
         this.modified = false;
         return bytes;

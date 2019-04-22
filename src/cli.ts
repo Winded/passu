@@ -54,6 +54,24 @@ export async function createPrompt(db: PasswordDatabase, delimiter: string, writ
     // @ts-ignore
     prompt.commands[1].remove();
 
+    prompt.command('change-master-password', 'Change database password').alias('cmp')
+        .action(async (_args) => {
+            let newPassword = await readPasswordFunc('New master password: ');
+            let confirmPassword = await readPasswordFunc('Confirm new master password: ');
+
+            if(!newPassword || newPassword == '') {
+                prompt.log('ERROR: Empty password');
+                return;
+            }
+            if(newPassword != confirmPassword) {
+                prompt.log('ERROR: Passwords do not match');
+                return;
+            }
+
+            db.password = newPassword;
+            prompt.log('Master password changed. Please save the database to use the new password.');
+        });
+
     prompt.command('default-policy view', 'View default policy').alias('dp v')
         .action(async (_args) => {
             let policy = db.defaultPolicy;

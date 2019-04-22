@@ -40,6 +40,26 @@ describe('PasswordDatabase', () => {
             expect(entry.password).to.eq('mypassword');
             expect(entry.description).to.eq('description');
         });
+        it('should decrypt and re-encrypt with another password successfully', () => {
+            let pwInput = 'testpassword';
+            let pwInput2 = 'anotherpassword';
+    
+            let db = new PasswordDatabase(pwInput);
+            db.addEntry('test', 'mypassword', 'description');
+    
+            let bytes = db.save();
+    
+            db = PasswordDatabase.fromData(bytes, pwInput);
+            db.password = pwInput2;
+            bytes = db.save();
+
+            let decryptedDb = PasswordDatabase.fromData(bytes, pwInput2);
+            let entry = decryptedDb.getEntry('test');
+            
+            expect(entry.name).to.eq('test');
+            expect(entry.password).to.eq('mypassword');
+            expect(entry.description).to.eq('description');
+        });
     });
     
     context('Add/Edit/Delete entries', () => {

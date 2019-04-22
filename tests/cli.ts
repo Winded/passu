@@ -12,6 +12,31 @@ describe('CLI commands', () => {
         events.EventEmitter.defaultMaxListeners = 100;
     });
 
+    context('Change master password', () => {
+        it('should change master password of database', async () => {
+            let db = new PasswordDatabase('testpassword');
+            db.addEntry('test', 'test', 'test');
+    
+            let prompt = await createPrompt(db, 'test> ', (_bytes) => {}, async () => 'anotherpassword');
+    
+            let output = '';
+            prompt.pipe((text) => {
+                output += text + '\n';
+                return '';
+            });
+    
+            await prompt.exec('change-master-password');
+
+            expect(output.trim()).to.eq(`Master password changed. Please save the database to use the new password.`);
+
+            let bytes = db.save();
+            db = PasswordDatabase.fromData(bytes, 'anotherpassword');
+            let entry = db.getEntry('test');
+    
+            expect(entry).to.not.equal(undefined);
+        });
+    });
+
     context('Default Policy', () => {
         it('should view default policy', async () => {
             let pwInput = 'testpassword';
