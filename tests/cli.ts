@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import 'mocha';
-import { PasswordDatabase } from '../src/passu';
+import { PasswordDatabase } from 'passu-lib';
 import { createPrompt } from '../src/cli';
 import * as events from 'events';
 import * as clipboardy from 'clipboardy';

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as read from 'read';
 import * as Vorpal from 'vorpal';
-import { PasswordDatabase, PasswordPolicy } from './passu';
+import { PasswordDatabase, PasswordPolicy } from 'passu-lib';
 import * as clipboardy from 'clipboardy';
 
 const passwordPrompt = (prompt: string): Promise<string> => new Promise((resolve, reject) => {

@@ -1,14 +1,15 @@
 {
   "name": "passu",
   "version": "1.0.0",
-  "description": "Password manager with CLI interface",
-  "main": "dist/passu.js",
+  "description": "CLI interface for passu, a password manager",
+  "main": "dist/src/cli.js",
   "bin": {
     "passu": "./bin/passu"
   },
   "scripts": {
-    "compile": "./node_modules/.bin/tsc",
-    "test": "./node_modules/.bin/mocha dist/tests"
+    "prepare": "npm run build",
+    "build": "tsc",
+    "test": "mocha dist/tests"
   },
   "repository": {
     "type": "git",
@@ -21,17 +22,14 @@
   },
   "homepage": "https://github.com/Winded/passu#readme",
   "dependencies": {
-    "bcrypt": "^3.0.6",
     "clipboardy": "^2.0.0",
-    "execa": "^1.0.0",
+    "passu-lib": "file:passu-lib",
     "read": "^1.0.7",
     "vorpal": "^1.12.0"
   },
   "devDependencies": {
-    "@types/bcrypt": "^3.0.0",
     "@types/chai": "^4.1.7",
     "@types/clipboardy": "^1.1.0",
-    "@types/execa": "^0.9.0",
     "@types/mocha": "^5.2.6",
     "@types/node": "^11.11.6",
     "@types/read": "0.0.28",
