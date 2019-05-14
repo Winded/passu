@@ -1,4 +1,4 @@
-# Passu
+# ![alt text](./logo/logo-inline.png) Passu
 
 Passu is a simplistic password manager with a CLI interface. It stores named password entries with optional description to a file encrypted with a master password.
 
